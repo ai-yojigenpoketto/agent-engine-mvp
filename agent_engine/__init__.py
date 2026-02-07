@@ -13,6 +13,10 @@ from __future__ import annotations
 
 import os
 
+from dotenv import load_dotenv
+
+load_dotenv()  # reads .env into os.environ (no-op if file missing)
+
 from agent_engine.engine.agent import AgentEngine
 from agent_engine.engine.llm import DemoMockLLMClient, OpenAILLMClient
 from agent_engine.engine.models import EngineEvent, EngineEventType, EventEnvelope
