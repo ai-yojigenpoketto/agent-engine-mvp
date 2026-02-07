@@ -82,6 +82,35 @@ python3.11 -m venv .venv && source .venv/bin/activate
 pip install -e ".[dev]"
 ```
 
+### With Docker
+
+```bash
+cd agent_engine_mvp
+
+# Add your API key to .env
+echo "OPENAI_API_KEY=sk-..." > .env
+
+# Build and run
+docker compose up --build
+
+# In another terminal:
+curl -N -X POST http://localhost:8000/chat \
+  -H "Content-Type: application/json" \
+  -d '{"text": "/gpu ECC error on GPU1", "session_id": "s1"}'
+
+# Stop
+docker compose down
+```
+
+Traces are persisted to `./traces/` on the host via bind mount.
+
+To run with the demo mock (no API key):
+
+```bash
+# Override the env var
+OPENAI_API_KEY= USE_MOCK_LLM=1 docker compose up --build
+```
+
 ## Run Tests
 
 ```bash
@@ -93,7 +122,10 @@ Expected: 20 tests pass (permissions, tool roundtrip, router selection, etc.)
 ## Run the Web SSE Server
 
 ```bash
-# With real OpenAI:
+# With .env (recommended — reads OPENAI_API_KEY from .env automatically):
+uvicorn agent_engine.adapters.web_fastapi.app:app --port 8000
+
+# Or export explicitly:
 export OPENAI_API_KEY=sk-...
 uvicorn agent_engine.adapters.web_fastapi.app:app --port 8000
 
@@ -258,5 +290,14 @@ pytest tests/test_router.py -v -k "gpu_prefix"
 
 ```bash
 pytest -v
-# Expect: 20 passed
+# Expect: 20 unit tests pass + 4 integration tests (pass with API key, skip without)
+```
+
+### 6. Docker
+
+```bash
+docker compose up --build -d
+curl -s http://localhost:8000/health
+# Expect: {"status":"ok"}
+docker compose down
 ```
