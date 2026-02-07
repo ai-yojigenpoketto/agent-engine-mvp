@@ -4,6 +4,36 @@ Minimal, embeddable agent runtime with session management, tool registry (RBAC +
 
 **No LangChain. No LlamaIndex. Pure Python.**
 
+## Tech Stack
+
+| Layer | Technology | What It Does |
+|---|---|---|
+| **Language** | Python 3.11, type-hinted throughout | Core runtime |
+| **Data Validation** | Pydantic v2 | Schema enforcement for tool I/O, events, sessions |
+| **LLM Integration** | OpenAI API (function calling) | GPT-4o-mini with tool-use loop |
+| **Web API** | FastAPI + Server-Sent Events (SSE) | Real-time streaming HTTP endpoint |
+| **Containerization** | Docker + Docker Compose | Single-command deploy with bind-mounted traces |
+| **Testing** | pytest + pytest-asyncio | 24 tests (unit + integration against live OpenAI) |
+| **Package Mgmt** | uv + pyproject.toml | Modern Python packaging |
+
+## Key Design Concepts
+
+**Agent Loop with Function Calling** — An iterative LLM loop (max 6 rounds) that detects when the model requests tool calls, executes them with validated I/O, feeds results back, and continues until a final answer. This is the core pattern behind ChatGPT plugins, Copilot, and every production agent system.
+
+**Hexagonal Architecture** — The engine core has zero knowledge of HTTP or CLI. Thin adapters translate between transport formats (SSE, JSON lines) and the engine's `EventEnvelope`/`EngineEvent` protocol. The runtime is embeddable in any context.
+
+**Streaming Event Protocol** — Seven event types (`token`, `tool_call`, `tool_result`, `retrieve`, `trace`, `final`, `error`) flow as an async iterator. The web adapter maps these 1:1 to SSE events. This is how real-time AI UIs work (ChatGPT's typing effect, Cursor's streaming).
+
+**Tool Registry with RBAC** — Tools are registered with Pydantic input/output schemas, role-based access control (user/operator/admin), configurable timeouts, and retry logic. Tool schemas auto-generate OpenAI function-calling JSON.
+
+**RAG Interface (Memory)** — Abstract `Memory` interface with `retrieve(query, k, session_id)` returning scored document chunks. MVP uses keyword overlap; the interface is designed for drop-in replacement with pgvector, Pinecone, etc.
+
+**Skill Routing** — Skills define system prompts, tool allowlists, and pre-retrieval strategies. A router dispatches by command prefix. This is the pattern behind multi-capability agents (one agent, multiple behaviors).
+
+**Observability / Tracing** — Every LLM call, tool execution, and retrieval emits structured trace events with latency measurements to JSONL files. The `TraceCollector` ABC is swappable to OpenTelemetry or Datadog.
+
+**Interface-Driven Design** — Five swappable ABCs: `SesStore`, `Memory`, `LLMClient`, `Skill`, `TraceCollector`. Each has an in-memory/mock MVP implementation and is designed for production replacement.
+
 ## Architecture
 
 ```
